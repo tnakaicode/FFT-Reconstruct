@@ -67,8 +67,8 @@ if __name__ == '__main__':
 
         # apply real-space constraints
         temp = inv
-        #inv = prev - beta*inv
-        inv *= mask
+        inv = prev - beta*np.abs(inv)
+        #inv *= mask
         """for i in range(0, l):
             for j in range(0, l):
                 # image region must be positive
@@ -87,6 +87,7 @@ if __name__ == '__main__':
         if s % 10 == 0:
             plt.figure()
             plt.imshow(prev)
+            plt.colorbar()
             plt.savefig(opt.dir + str(s)+".png")
             print(s)
 
