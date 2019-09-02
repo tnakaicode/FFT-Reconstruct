@@ -5,7 +5,6 @@ import scipy.ndimage as nd
 import scipy.misc as misc
 import cv2
 from PIL import Image
-from math import pi
 from matplotlib import image
 
 # Read in source image
@@ -29,7 +28,7 @@ mask = np.pad(mask, ((pad_len-1, pad_len-1), (pad_len-1, pad_len-1)), 'constant'
               constant_values=((0, 0), (0, 0)))
 
 # Initial guess using random phase info
-guess = diffract * np.exp(1j * np.random.rand(l, l) * 2 * pi)
+guess = diffract * np.exp(1j * np.random.rand(l, l) * 2 * np.pi)
 
 # number of iterations
 r = 1001
