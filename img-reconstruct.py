@@ -30,6 +30,8 @@ if __name__ == '__main__':
     padded = np.pad(source, ((pad_len, pad_len), (pad_len, pad_len)),
                     'constant', constant_values=((0, 0), (0, 0)))
 
+    print(source.shape)
+    print(padded.shape)
     ft = fft.fft2(padded)
 
     # simulate diffraction pattern
@@ -43,10 +45,11 @@ if __name__ == '__main__':
                   constant_values=((0, 0), (0, 0)))
 
     # Initial guess using random phase info
+    np.savetxt("mask.txt", mask)
     guess = diffract * np.exp(1j * np.random.rand(l, l) * 2 * np.pi)
 
     # number of iterations
-    r = 101
+    r = 1001
 
     # step size parameter
     beta = 0.8
@@ -64,14 +67,16 @@ if __name__ == '__main__':
 
         # apply real-space constraints
         temp = inv
-        for i in range(0, l):
+        inv = prev - beta*inv
+        inv *= mask
+        """for i in range(0, l):
             for j in range(0, l):
                 # image region must be positive
                 if inv[i, j] < 0 and mask[i, j] == 1:
                     inv[i, j] = prev[i, j] - beta*inv[i, j]
                 # push support region intensity toward zero
                 if mask[i, j] == 0:
-                    inv[i, j] = prev[i, j] - beta*inv[i, j]
+                    inv[i, j] = prev[i, j] - beta*inv[i, j]"""
 
         prev = temp
 
@@ -82,5 +87,8 @@ if __name__ == '__main__':
         if s % 10 == 0:
             plt.figure()
             plt.imshow(prev)
-            plt.savefig(bmpfile + str(s)+".png")
+            plt.savefig(opt.dir + str(s)+".png")
             print(s)
+
+        if s % 100 == 0:
+            np.savetxt(opt.dir + str(s)+".txt", prev)
