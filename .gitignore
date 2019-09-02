@@ -1,3 +1,12 @@
-frequencyspace/*
-realspace/*
-save/*
+# VSCode
+.vscode/*
+.*/*
+.vscode/settings.json
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.pyc[cod]
+
+# png file
+test_png/*.png
