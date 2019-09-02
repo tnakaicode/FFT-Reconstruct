@@ -49,7 +49,7 @@ if __name__ == '__main__':
     guess = diffract * np.exp(1j * np.random.rand(l, l) * 2 * np.pi)
 
     # number of iterations
-    r = 1001
+    r = 501
 
     # step size parameter
     beta = 0.8
@@ -67,16 +67,16 @@ if __name__ == '__main__':
 
         # apply real-space constraints
         temp = inv
-        inv = prev - beta*inv
-        inv *= mask
-        """for i in range(0, l):
+        #inv = prev - beta*inv
+        #inv *= mask
+        for i in range(0, l):
             for j in range(0, l):
                 # image region must be positive
                 if inv[i, j] < 0 and mask[i, j] == 1:
                     inv[i, j] = prev[i, j] - beta*inv[i, j]
                 # push support region intensity toward zero
                 if mask[i, j] == 0:
-                    inv[i, j] = prev[i, j] - beta*inv[i, j]"""
+                    inv[i, j] = prev[i, j] - beta*inv[i, j]
 
         prev = temp
 
