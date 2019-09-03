@@ -35,44 +35,43 @@ class ImageRec (object):
                            'constant', constant_values=((0, 0), (0, 0)))
 
         # 2D-FFT for padded data
-        self.dat_fft = fft.fft2(self.dat_pad)
-        self.dat_dff = np.abs(self.dat_fft)
+        self.pad_fft = fft.fft2(self.dat_pad)
+        self.pad_abs = np.abs(self.pad_fft)
 
         # Initial Phase in random
-        self.phas = self.dat_dff * \
-            np.exp(1j * np.random.rand(*self.pad_shp) * 2 * np.pi)
+        self.phas = np.random.rand(*self.pad_shp) * 2 * np.pi
+        self.pad_cmp = self.pad_abs * np.exp(1j * self.phas)
 
         # number of iterations
-        r = 1001
+        r = 101
         # step size parameter
         beta = 0.8
 
         self.prev = None
-
         for s in range(0, r):
-            # apply fourier domain constraints
-            self.pad_cmp = self.dat_dff * np.exp(1j * np.angle(self.phas))
+            # Generate complex data
+            # ampl: original ampli data
+            # phas: previous phase data
+            self.pad_cmp = self.pad_abs * np.exp(1j * np.angle(self.phas))
 
             self.pad_inv = fft.ifft2(self.pad_cmp)
             self.pad_inv = np.real(self.pad_inv)
             if self.prev is None:
-                self.prev = self.pad_inv
+                self.prev = self.pad_inv.copy()
 
             # apply real-space constraints
             temp = self.pad_inv
-            for i in range(0, self.pad_shp[0]):
-                for j in range(0, self.pad_shp[1]):
-                    # image region must be positive
-                    if self.pad_inv[i, j] < 0 and self.mask[i, j] == 1:
-                        self.pad_inv[i, j] = self.prev[i, j] - \
-                            beta * self.pad_inv[i, j]
-                    # push support region intensity toward zero
-                    if self.mask[i, j] == 0:
-                        self.pad_inv[i, j] = self.prev[i, j] - \
-                            beta * self.pad_inv[i, j]
-
+            for (i, j), val in np.ndenumerate(self.pad_inv):
+                # image region must be positive
+                if self.mask[i, j] == 1 and val < 0:
+                    self.pad_inv[i, j] = self.prev[i, j] - beta * val
+                # push support region intensity toward zero
+                if self.mask[i, j] == 0:
+                    self.pad_inv[i, j] = self.prev[i, j] - beta * val
+                else:
+                    self.pad_inv[i, j] = 0
+            
             self.prev = temp
-
             self.phas = fft.fft2(self.pad_inv)
 
             # save an image of the progress
@@ -81,7 +80,7 @@ class ImageRec (object):
                 plt.imshow(self.prev)
                 plt.colorbar()
                 plt.savefig(self.dir + str(s) + ".png")
-                print(s)
+                print(time.ctime(time.time()), s)
 
             if s % 100 == 0:
                 plt.savefig(self.dir + str(s) + ".png")
