@@ -10,3 +10,4 @@ __pycache__/
 
 # png file
 test_png/*.png
+test_png/*.txt
