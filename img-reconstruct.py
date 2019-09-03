@@ -13,6 +13,76 @@ from linecache import getline, clearcache
 from optparse import OptionParser
 
 
+class ImageRec (object):
+
+    def __init__(self, dirname="./test_png/", name="einstein"):
+        self.dir = dirname
+        self.bmp = self.dir + name
+        self.dat = image.imread(self.bmp + ".bmp")
+
+        self.dat_shp = self.dat.shape
+        self.dat_pad = np.pad(self.dat, (self.dat_shp, self.dat_shp),
+                              'constant', constant_values=((0, 0), (0, 0)))
+        self.dat_fft = fft.fft2(self.dat_pad)
+        self.dat_dff = np.abs(self.dat_fft)
+
+        self.pad_shp = self.dat_pad.shape
+        self.pad_shp_m = (self.pad_shp[0] - 1, self.pad_shp[1] - 1)
+        self.pad_shp_p = (self.pad_shp[0] + 2, self.pad_shp[1] + 2)
+
+        self.mask = np.ones(self.pad_shp_p)
+        self.mask = np.pad(self.mask, (self.pad_shp_m, self.pad_shp_m),
+                           'constant', constant_values=((0, 0), (0, 0)))
+
+        self.phas = self.dat_dff * \
+            np.exp(1j * np.random.rand(*self.pad_shp) * 2 * np.pi)
+
+        # number of iterations
+        r = 1001
+        # step size parameter
+        beta = 0.8
+
+        prev = None
+
+        for s in range(0, r):
+            # apply fourier domain constraints
+            self.phas = self.dat_dff * np.exp(1j * np.angle(self.phas))
+
+            self.pad_inv = fft.ifft2(self.phas)
+            self.pad_inv = np.real(self.pad_inv)
+            if prev is None:
+                prev = self.pad_inv
+
+            # apply real-space constraints
+            temp = self.pad_inv
+            for i in range(0, self.pad_shp[0]):
+                for j in range(0, self.pad_shp[1]):
+                    # image region must be positive
+                    if self.pad_inv[i, j] < 0 and self.mask[i, j] == 1:
+                        self.pad_inv[i, j] = prev[i, j] - \
+                            beta * self.pad_inv[i, j]
+                    # push support region intensity toward zero
+                    if self.mask[i, j] == 0:
+                        self.pad_inv[i, j] = prev[i, j] - \
+                            beta * self.pad_inv[i, j]
+
+            prev = temp
+
+            self.phas = fft.fft2(self.pad_inv)
+
+            # save an image of the progress
+            if s % 10 == 0:
+                plt.figure()
+                plt.imshow(prev)
+                plt.colorbar()
+                plt.savefig(self.dir + str(s) + ".png")
+                print(s)
+            
+            if s % 100 == 0:
+                plt.savefig(self.dir + str(s) + ".png")
+                np.savetxt(self.dir + str(s) + ".txt", prev)
+                
+
 if __name__ == '__main__':
     argvs = sys.argv
     parser = OptionParser()
@@ -21,75 +91,5 @@ if __name__ == '__main__':
     opt, argc = parser.parse_args(argvs)
     print(argc, opt)
 
-    # Read in source image
-    bmpfile = opt.dir + opt.name
-    source = image.imread(bmpfile + ".bmp")
-
-    # Pad image to simulate oversampling
-    pad_len = len(source)
-    padded = np.pad(source, ((pad_len, pad_len), (pad_len, pad_len)),
-                    'constant', constant_values=((0, 0), (0, 0)))
-
-    print(source.shape)
-    print(padded.shape)
-    ft = fft.fft2(padded)
-
-    # simulate diffraction pattern
-    diffract = np.abs(ft)
-
-    l = len(padded)
-
-    # keep track of where the image is vs the padding
-    mask = np.ones((pad_len+2, pad_len+2))
-    mask = np.pad(mask, ((pad_len-1, pad_len-1), (pad_len-1, pad_len-1)), 'constant',
-                  constant_values=((0, 0), (0, 0)))
-
-    # Initial guess using random phase info
-    np.savetxt("mask.txt", mask)
-    guess = diffract * np.exp(1j * np.random.rand(l, l) * 2 * np.pi)
-
-    # number of iterations
-    r = 1001
-
-    # step size parameter
-    beta = 0.8
-
-    # previous result
-    prev = None
-    for s in range(0, r):
-        # apply fourier domain constraints
-        update = diffract * np.exp(1j * np.angle(guess))
-
-        inv = fft.ifft2(update)
-        inv = np.real(inv)
-        if prev is None:
-            prev = inv
-
-        # apply real-space constraints
-        temp = inv
-        inv = prev - beta*np.abs(inv)
-        #inv *= mask
-        """for i in range(0, l):
-            for j in range(0, l):
-                # image region must be positive
-                if inv[i, j] < 0 and mask[i, j] == 1:
-                    inv[i, j] = prev[i, j] - beta*inv[i, j]
-                # push support region intensity toward zero
-                if mask[i, j] == 0:
-                    inv[i, j] = prev[i, j] - beta*inv[i, j]"""
-
-        prev = temp
-
-        guess = fft.fft2(inv)
-
-        # save an image of the progress
-
-        if s % 10 == 0:
-            plt.figure()
-            plt.imshow(prev)
-            plt.colorbar()
-            plt.savefig(opt.dir + str(s)+".png")
-            print(s)
-
-        if s % 100 == 0:
-            np.savetxt(opt.dir + str(s)+".txt", prev)
+    obj = ImageRec()
+    
