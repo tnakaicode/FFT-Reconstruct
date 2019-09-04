@@ -29,6 +29,11 @@ class ImageRec (object):
                               'constant', constant_values=((0, 0), (0, 0)))
         self.pad_shp = self.dat_pad.shape
 
+        plt.figure()
+        plt.imshow(self.dat_pad)
+        plt.colorbar()
+        plt.savefig(self.bmp + ".png")
+
         # mask
         self.mask = np.ones(self.dat_shp_p)
         self.mask = np.pad(self.mask, (self.dat_shp_m, self.dat_shp_m),
@@ -44,9 +49,9 @@ class ImageRec (object):
         self.pad_inv = fft.ifft2(self.pad_cmp)
 
         # number of iterations
-        r = 501
+        r = 1001
         # step size parameter
-        beta = 0.1
+        beta = 0.9
 
         self.prev = np.real(self.pad_inv)
         for s in range(0, r):
