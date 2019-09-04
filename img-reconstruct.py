@@ -3,10 +3,6 @@ import matplotlib.pyplot as plt
 import sys
 import time
 import os
-import numpy.fft as fft
-import scipy.ndimage as nd
-import scipy.misc as misc
-import cv2
 from PIL import Image
 from matplotlib import image
 from linecache import getline, clearcache
@@ -23,65 +19,62 @@ class ImageRec (object):
         self.dat_shp_m = (self.dat_shp[0] - 1, self.dat_shp[1] - 1)
         self.dat_shp_p = (self.dat_shp[0] + 2, self.dat_shp[1] + 2)
 
+        self.pad_data()
+
+        # 2D-FFT for padded data
+        # Initialize
+        self.pad_fft = np.fft.fft2(self.dat_pad)
+        self.pad_abs = np.abs(self.pad_fft)
+        self.phs = np.random.rand(*self.pad_shp) * 2 * np.pi
+        self.pad_cmp = self.pad_abs * np.exp(1j * self.phs)
+
+    def pad_data(self):
         # padded data
         # (150, 150) -> (450, 450)
-        self.dat_pad = np.pad(self.dat, (self.dat_shp, self.dat_shp),
-                              'constant', constant_values=((0, 0), (0, 0)))
+        self.dat_pad = np.pad(
+            self.dat, (self.dat_shp, self.dat_shp), 'constant')
         self.pad_shp = self.dat_pad.shape
 
         # mask
         self.mask = np.ones(self.dat_shp_p)
-        self.mask = np.pad(self.mask, (self.dat_shp_m, self.dat_shp_m),
-                           'constant', constant_values=((0, 0), (0, 0)))
+        self.mask = np.pad(
+            self.mask, (self.dat_shp_m, self.dat_shp_m), 'constant')
 
-        # 2D-FFT for padded data
-        self.pad_fft = fft.fft2(self.dat_pad)
-        self.pad_abs = np.abs(self.pad_fft)
-
+    def run_fft(self, r=1001, beta=0.9):
         # Initial Phase in random
-        self.phas = np.random.rand(*self.pad_shp) * 2 * np.pi
-        self.pad_cmp = self.pad_abs * np.exp(1j * self.phas)
-        self.pad_inv = fft.ifft2(self.pad_cmp)
-
-        # number of iterations
-        r = 501
-        # step size parameter
-        beta = 0.1
-
-        self.prev = np.real(self.pad_inv)
+        self.pad_cmp = self.pad_abs * np.exp(1j * np.angle(self.pad_cmp))
+        self.pad_inv = np.fft.ifft2(self.pad_cmp)
+        self.prv = np.real(self.pad_inv)
         for s in range(0, r):
             # Generate complex data
             # ampl: original ampli data
             # phas: previous phase data
             self.pad_cmp = self.pad_abs * np.exp(1j * np.angle(self.pad_cmp))
-
-            self.pad_inv = fft.ifft2(self.pad_cmp)
+            self.pad_inv = np.fft.ifft2(self.pad_cmp)
             self.pad_rel = np.real(self.pad_inv)
-            if self.prev is None:
-                self.prev = np.real(self.pad_inv)
 
             # apply real-space constraints
             for (i, j), val in np.ndenumerate(self.pad_rel):
                 # image region must be positive
                 if self.mask[i, j] == 1 and val < 0:
-                    self.pad_rel[i, j] = self.prev[i, j] - beta * val
+                    self.pad_rel[i, j] = self.prv[i, j] - beta * val
                 # push support region intensity toward zero
                 if self.mask[i, j] == 0:
-                    self.pad_rel[i, j] = self.prev[i, j] - beta * val
+                    self.pad_rel[i, j] = self.prv[i, j] - beta * val
 
-            self.prev = np.real(self.pad_inv)
-            self.pad_cmp = fft.fft2(self.pad_rel)
+            self.prv = np.real(self.pad_inv)
+            self.pad_cmp = np.fft.fft2(self.pad_rel)
 
             # save an image of the progress
             if s % 10 == 0:
                 plt.figure()
-                plt.imshow(self.prev)
+                plt.imshow(self.prv)
                 plt.colorbar()
                 plt.savefig(self.dir + "{0:04d}.png".format(s))
                 print(time.ctime(time.time()), s)
 
             if s % 100 == 0:
-                np.savetxt(self.dir + str(s) + ".txt", self.prev)
+                np.savetxt(self.dir + str(s) + ".txt", self.prv)
 
 
 if __name__ == '__main__':
@@ -93,3 +86,6 @@ if __name__ == '__main__':
     print(argc, opt)
 
     obj = ImageRec()
+    obj.run_fft(r=101, beta=0.8)
+    obj.run_fft(r=101, beta=0.9)
+    obj.run_fft(r=101, beta=1.0)
