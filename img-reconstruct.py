@@ -28,6 +28,8 @@ class ImageRec (object):
         self.phs = np.random.rand(*self.pad_shp) * 2 * np.pi
         self.pad_cmp = self.pad_abs * np.exp(1j * self.phs)
 
+        self.idx = 0
+
     def pad_data(self):
         # padded data
         # (150, 150) -> (450, 450)
@@ -46,11 +48,10 @@ class ImageRec (object):
             self.mask, (self.dat_shp_m, self.dat_shp_m), 'constant')
 
     def run_fft(self, r=1001, beta=0.9):
-        self.prev = np.real(self.pad_inv)
-        self.pad_cmp = self.pad_abs * np.exp(1j * np.angle(self.pad_cmp))
+        #self.pad_cmp = self.pad_abs * np.exp(1j * np.angle(self.pad_cmp))
         self.pad_inv = np.fft.ifft2(self.pad_cmp)
         self.prv = np.real(self.pad_inv)
-        for s in range(0, r):
+        for s in range(self.idx, self.idx + r):
             # Generate complex data
             # ampl: original ampli data
             # phas: previous phase data
@@ -80,6 +81,8 @@ class ImageRec (object):
 
             if s % 100 == 0:
                 np.savetxt(self.dir + str(s) + ".txt", self.prv)
+
+        self.idx += r
 
 
 if __name__ == '__main__':
